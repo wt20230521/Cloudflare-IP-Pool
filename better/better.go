@@ -114,6 +114,7 @@ func GetIPs(v4 bool, useTLS bool, bandwidth int, resultCount int) string {
 		resultCount = 1
 	}
 
+	// 转为 kB/s
 	speedTarget := bandwidth * 128
 
 	startTime := timeNow()

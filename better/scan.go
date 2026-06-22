@@ -18,14 +18,14 @@ import (
 
 // ----------------------- API 服务端 -----------------------
 
-var apiServerURL = "https://cfip.989920.xyz"
+var apiServerURL = "https://cfip.989920.xyz" // Worker 地址
 
 // PoolEntry 池中单条记录
 type PoolEntry struct {
 	IP   string
 	Port int
 	TLS  bool
-	DC   string
+	DC   string // 三字码头
 }
 
 // ----------------------- 包级全局变量 -----------------------
@@ -54,6 +54,7 @@ func scanCtx() context.Context {
 
 var downloadClient = &http.Client{Timeout: 30 * time.Second}
 
+// fetchPoolFromServer 从 API 服务端拉取 IP 池
 func fetchPoolFromServer(v4, useTLS bool, dc string) ([]PoolEntry, error) {
 	setProgress("正在从服务器获取 IP 池...")
 
@@ -93,6 +94,7 @@ func fetchPoolFromServer(v4, useTLS bool, dc string) ([]PoolEntry, error) {
 	return sr.Nodes, nil
 }
 
+// fetchDCs 从 API 获取数据中心列表（含国家备注）
 func fetchDCs() ([]DCEntry, error) {
 	req, _ := http.NewRequestWithContext(scanCtx(), "GET", apiServerURL+"/api/dcs", nil)
 	req.Header.Set("X-API-Key", "cfip-2026")
@@ -130,6 +132,7 @@ func nextRandomIntn(n int) int {
 	return randomGenerator.Intn(n)
 }
 
+// randomSample 从列表中随机抽取 n 个元素
 func randomSample[T any](list []T, n int) []T {
 	shuffled := make([]T, len(list))
 	copy(shuffled, list)
@@ -154,6 +157,7 @@ type RTTResult struct {
 	LatencyMs int
 }
 
+// testRTT 测试单个 IP:port 的 RTT
 func testRTT(entry PoolEntry) int {
 	var totalMs int
 	for range 3 {
@@ -202,6 +206,7 @@ func testRTT(entry PoolEntry) int {
 	return totalMs / 3
 }
 
+// runRTTTest 运行 RTT 测试（并发）
 func runRTTTest(entries []PoolEntry, taskNum int) []RTTResult {
 	if len(entries) < taskNum {
 		taskNum = len(entries)
@@ -278,6 +283,7 @@ func runRTTTest(entries []PoolEntry, taskNum int) []RTTResult {
 
 // ----------------------- 速度测试 -----------------------
 
+// runSpeedTestSimple 简单速度测试
 func runSpeedTestSimple(ip string, port int, useTLS bool) (int, int, string) {
 	var tcpMs int
 	transport := &http.Transport{
@@ -345,6 +351,7 @@ func runSpeedTestSimple(ip string, port int, useTLS bool) (int, int, string) {
 	return maxSpeed, tcpMs, dataCenter
 }
 
+// extractDataCenter 从 CF-RAY 头提取三字码头
 func extractDataCenter(cfRay string) string {
 	if cfRay == "" {
 		return ""
@@ -356,6 +363,7 @@ func extractDataCenter(cfRay string) string {
 	return strings.TrimSpace(parts[len(parts)-1])
 }
 
+// verifyTLS 快速 TLS 握手验证
 func verifyTLS(ip string, port int) bool {
 	conn, err := tls.DialWithDialer(
 		&net.Dialer{Timeout: 2 * time.Second},
@@ -374,6 +382,7 @@ func verifyTLS(ip string, port int) bool {
 
 // ----------------------- 核心测试逻辑 -----------------------
 
+// cloudflareTest 使用 cfnb IP 池做优选，返回 topN 个结果
 func cloudflareTest(ipType int, useTLS bool, taskNum int, speed int, topN int) []ScanResult {
 	entries, err := fetchPoolFromServer(ipType == 4, useTLS, dcFilter)
 	if err != nil {
@@ -505,11 +514,11 @@ func cloudflareTest(ipType int, useTLS bool, taskNum int, speed int, topN int) [
 	for i := 0; i < topN; i++ {
 		r := results[i]
 		out = append(out, ScanResult{
-			IP:             r.ipport,
-			MaxSpeed:       r.maxSpeed,
-			RealBandwidth:  r.maxSpeed / 128,
-			LatencyMs:      r.latency,
-			DataCenter:     r.dc,
+			IP:            r.ipport,
+			MaxSpeed:      r.maxSpeed,
+			RealBandwidth: r.maxSpeed / 128,
+			LatencyMs:     r.latency,
+			DataCenter:    r.dc,
 		})
 	}
 	setProgress(fmt.Sprintf("测速完成，返回 %d 个优选 IP", len(out)))

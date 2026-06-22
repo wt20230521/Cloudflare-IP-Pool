@@ -1,13 +1,14 @@
 package main
 
 import (
-	"Cloudflare-IP-Pool/better"
+	"cfip/better"
 	"embed"
 	"encoding/json"
 	"log"
 	"net"
 	"net/http"
 	"os"
+	"os/exec"
 	"os/signal"
 	"strconv"
 	"sync"
@@ -17,6 +18,8 @@ import (
 //go:embed web/*
 var webFS embed.FS
 
+// ── Scan Manager ──
+
 type scanManager struct {
 	mu      sync.Mutex
 	running bool
@@ -25,12 +28,13 @@ type scanManager struct {
 
 var manager scanManager
 
+// scanRequest 扫描请求参数
 type scanRequest struct {
-	V4    bool `json:"v4"`
-	TLS   bool `json:"tls"`
-	BW    int  `json:"bw"`
+	V4    bool   `json:"v4"`
+	TLS   bool   `json:"tls"`
+	BW    int    `json:"bw"`
 	DC    string `json:"dc"`
-	Count int  `json:"count"`
+	Count int    `json:"count"`
 }
 
 type scanResponse struct {
@@ -45,10 +49,7 @@ type progressResponse struct {
 	Result   string `json:"result,omitempty"`
 }
 
-type statusResponse struct {
-	Running bool   `json:"running"`
-	Result  string `json:"result,omitempty"`
-}
+// ── API Handlers ──
 
 func handleDCs(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -115,6 +116,11 @@ func handleProgress(w http.ResponseWriter, r *http.Request) {
 	})
 }
 
+type statusResponse struct {
+	Running bool   `json:"running"`
+	Result  string `json:"result,omitempty"`
+}
+
 func handleStatus(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 	manager.mu.Lock()
@@ -140,11 +146,14 @@ func handleUpdate(w http.ResponseWriter, r *http.Request) {
 	json.NewEncoder(w).Encode(map[string]bool{"updated": true})
 }
 
+// ── Main ──
+
 func main() {
 	log.SetFlags(0)
 
 	better.SetApiServer("https://cfip.989920.xyz")
 
+	// Static file server for embedded web UI
 	mux := http.NewServeMux()
 	mux.Handle("/", http.FileServer(http.FS(webFS)))
 	mux.HandleFunc("/api/dcs", handleDCs)
@@ -154,6 +163,7 @@ func main() {
 	mux.HandleFunc("/api/cancel", handleCancel)
 	mux.HandleFunc("/api/update", handleUpdate)
 
+	// Find free port
 	listener, err := net.Listen("tcp", "127.0.0.1:0")
 	if err != nil {
 		log.Fatalf("无法启动服务: %v", err)
@@ -163,6 +173,11 @@ func main() {
 	log.Printf("  CF IP 优选已启动")
 	log.Printf("  打开浏览器访问: http://127.0.0.1:%d", port)
 
+	// Windows: 使用 cmd /c start 打开浏览器
+	url := "http://127.0.0.1:" + strconv.Itoa(port)
+	exec.Command("cmd", "/c", "start", url).Start()
+
+	// Handle shutdown
 	sigCh := make(chan os.Signal, 1)
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
