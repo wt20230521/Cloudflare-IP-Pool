@@ -1,1 +1,362 @@
+<!DOCTYPE html>
+<html lang="zh">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CF IP 优选</title>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:20px}
+.container{max-width:480px;width:100%;margin:0 auto}
+.card{background:#1e293b;border-radius:12px;padding:20px;margin-bottom:12px}
+.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0}
+.title{font-size:22px;font-weight:700}
+.row{display:flex;gap:8px;margin-top:14px}
+.row label{flex:1;font-size:13px;color:#94a3b8;display:block;margin-bottom:6px}
+.segmented{display:flex;background:#0f172a;border-radius:8px;padding:3px;height:44px}
+.segmented button{flex:1;border:none;background:transparent;color:#94a3b8;font-size:14px;font-weight:600;border-radius:6px;cursor:pointer;transition:all .2s}
+.segmented button.active{background:#3b82f6;color:#fff}
+.input-group{display:flex;align-items:center;background:#0f172a;border-radius:8px;height:44px;padding:0 12px;margin-top:6px}
+.input-group input{flex:1;background:transparent;border:none;color:#e2e8f0;font-size:16px;font-weight:600;text-align:center;outline:none}
+.input-group span{font-size:13px;color:#94a3b8}
+.switch-row{display:flex;justify-content:space-between;align-items:center;background:#0f172a;border-radius:8px;height:44px;padding:0 12px;margin-top:6px}
+.switch-row span{font-size:14px;font-weight:600}
+.switch{position:relative;width:44px;height:24px}
+.switch input{opacity:0;width:0;height:0}
+.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#475569;border-radius:24px;transition:.3s}
+.slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
+.switch input:checked+.slider{background:#3b82f6}
+.switch input:checked+.slider:before{transform:translateX(20px)}
+.dc-row{margin-top:14px}
+.dc-row label{font-size:13px;color:#94a3b8;display:block;margin-bottom:6px}
+.dc-row select{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;padding:10px 12px;outline:none;cursor:pointer}
+.dc-row select:focus{border-color:#3b82f6}
+.dc-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px}
+.dc-header button{background:#334155;border:none;color:#94a3b8;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer}
+.dc-header button:hover{background:#475569;color:#e2e8f0}
+.btn-scan{width:100%;height:48px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;transition:all .2s}
+.btn-start{background:#3b82f6;color:#fff}
+.btn-start:hover{background:#2563eb}
+.btn-stop{background:#ef4444;color:#fff}
+.btn-stop:hover{background:#dc2626}
+.progress{display:none;margin-top:14px;background:#0f172a;border-radius:8px;padding:12px}
+.progress.visible{display:block}
+.progress-text{font-size:13px;color:#94a3b8;margin-top:8px}
+.spinner{width:100%;height:4px;background:#334155;border-radius:2px;overflow:hidden}
+.spinner:after{content:"";display:block;width:40%;height:100%;background:#3b82f6;border-radius:2px;animation:spin 1s ease-in-out infinite}
+@keyframes spin{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+.results{display:none;margin-top:0}
+.results.visible{display:block}
+.result-card{background:#0f172a;border-radius:8px;padding:12px;margin-top:8px}
+.result-card .ip{font-family:monospace;font-size:15px;font-weight:700;color:#60a5fa;cursor:pointer;padding:8px 10px;background:#1e293b;border-radius:6px;word-break:break-all}
+.result-card .metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
+.result-card .metric{background:#1e293b;border-radius:6px;padding:8px}
+.result-card .metric .label{font-size:11px;color:#64748b}
+.result-card .metric .value{font-size:14px;font-weight:600;color:#e2e8f0;margin-top:2px}
+.result-card .metric .value.good{color:#22c55e}
+.empty{text-align:center;color:#64748b;padding:30px;font-size:14px}
+.history{margin-top:0}
+.history-title{font-size:16px;font-weight:600;margin-bottom:2px}
+.history-hint{font-size:12px;color:#64748b;margin-bottom:12px}
+.history-list{max-height:300px;overflow-y:auto}
+.history-item{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#0f172a;border-radius:6px;margin-bottom:6px;cursor:pointer}
+.history-item:hover{background:#1e293b}
+.history-item .ip{font-family:monospace;font-size:13px;color:#60a5fa}
+.history-item .meta{font-size:11px;color:#64748b;text-align:right}
+.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#334155;color:#e2e8f0;padding:10px 20px;border-radius:8px;font-size:13px;z-index:100;opacity:0;transition:opacity .3s}
+.toast.show{opacity:1}
+</style>
+</head>
+<body>
+<div class="container">
+  <div class="card header">
+    <div class="title">CF IP 优选</div>
+  </div>
 
+  <div class="card">
+    <div class="row">
+      <div>
+        <label>IP 协议</label>
+        <div class="segmented" id="ipVersion">
+          <button class="active" data-value="v4">IPv4</button>
+          <button data-value="v6">IPv6</button>
+        </div>
+      </div>
+      <div>
+        <label>结果数量</label>
+        <div class="segmented" id="resultCount">
+          <button class="active" data-value="1">1 个</button>
+          <button data-value="5">5 个</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="row">
+      <div style="flex:1">
+        <label>期望带宽</label>
+        <div class="input-group">
+          <input type="number" id="bandwidth" value="50" min="1" max="1000">
+          <span>Mbps</span>
+        </div>
+      </div>
+      <div style="flex:1">
+        <label>连接验证</label>
+        <div class="switch-row">
+          <span>TLS</span>
+          <label class="switch">
+            <input type="checkbox" id="tls" checked>
+            <span class="slider"></span>
+          </label>
+        </div>
+      </div>
+    </div>
+
+    <div class="dc-row">
+      <div class="dc-header">
+        <label>数据中心</label>
+        <button onclick="loadDCs()">刷新</button>
+      </div>
+      <select id="dcSelect">
+        <option value="">全部</option>
+      </select>
+    </div>
+  </div>
+
+  <div class="card" style="padding-bottom:12px">
+    <button class="btn-scan btn-start" id="scanBtn" onclick="toggleScan()">开始扫描</button>
+    <div class="progress" id="progress">
+      <div class="spinner"></div>
+      <div class="progress-text" id="progressText">正在初始化...</div>
+    </div>
+  </div>
+
+  <div class="card results" id="results">
+    <div id="resultsList"></div>
+    <div style="margin-top:12px;font-size:12px;color:#64748b" id="resultTime"></div>
+  </div>
+
+  <div class="card history">
+    <div class="history-title">历史记录</div>
+    <div class="history-hint">点击 IP 可复制，保存最近 10 条</div>
+    <div class="history-list" id="historyList">
+      <div class="empty">暂无历史记录</div>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let running = false;
+let pollTimer = null;
+let history = JSON.parse(localStorage.getItem('cfip_history') || '[]');
+
+document.querySelectorAll('.segmented').forEach(group => {
+  group.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      group.querySelectorAll('button').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+    });
+  });
+});
+
+function loadDCs() {
+  fetch('/api/dcs').then(r => r.json()).then(dcs => {
+    const sel = document.getElementById('dcSelect');
+    const cur = sel.value;
+    sel.innerHTML = '<option value="">全部</option>';
+    dcs.forEach(d => {
+      const opt = document.createElement('option');
+      opt.value = d.dc;
+      opt.textContent = d.dc + (d.label ? ' - ' + d.label : '');
+      sel.appendChild(opt);
+    });
+    if (cur) sel.value = cur;
+  }).catch(() => {});
+}
+
+function toggleScan() {
+  if (running) {
+    cancelScan();
+  } else {
+    startScan();
+  }
+}
+
+function startScan() {
+  running = true;
+  const btn = document.getElementById('scanBtn');
+  btn.textContent = '停止扫描';
+  btn.className = 'btn-scan btn-stop';
+  document.getElementById('progress').classList.add('visible');
+  document.getElementById('progressText').textContent = '正在启动...';
+
+  const v4 = document.querySelector('#ipVersion .active').dataset.value === 'v4';
+  const tls = document.getElementById('tls').checked;
+  const bw = parseInt(document.getElementById('bandwidth').value) || 50;
+  const dc = document.getElementById('dcSelect').value;
+  const count = parseInt(document.querySelector('#resultCount .active').dataset.value) || 1;
+
+  fetch('/api/scan', {
+    method: 'POST',
+    headers: {'Content-Type': 'application/json'},
+    body: JSON.stringify({v4, tls, bw, dc, count})
+  }).then(r => r.json()).then(data => {
+    if (data.error) {
+      showToast(data.error);
+      stopScanUI();
+      return;
+    }
+    pollProgress();
+  }).catch(() => {
+    showToast('请求失败，请检查服务');
+    stopScanUI();
+  });
+}
+
+function cancelScan() {
+  fetch('/api/cancel', {method: 'POST'}).then(() => {
+    stopScanUI();
+    document.getElementById('progressText').textContent = '已取消';
+    setTimeout(() => {
+      document.getElementById('progress').classList.remove('visible');
+    }, 1000);
+  });
+}
+
+function stopScanUI() {
+  running = false;
+  const btn = document.getElementById('scanBtn');
+  btn.textContent = '开始扫描';
+  btn.className = 'btn-scan btn-start';
+  if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
+}
+
+function pollProgress() {
+  pollTimer = setInterval(() => {
+    fetch('/api/progress').then(r => r.json()).then(data => {
+      if (data.progress) {
+        document.getElementById('progressText').textContent = data.progress;
+      }
+      if (document.getElementById('progress').classList.contains('visible')) {
+        document.querySelector('.spinner').style.display = 'block';
+      }
+      if (!data.running && data.result) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+        stopScanUI();
+        document.getElementById('progress').classList.remove('visible');
+        showResult(data.result);
+      } else if (!data.running) {
+        clearInterval(pollTimer);
+        pollTimer = null;
+        stopScanUI();
+        document.getElementById('progress').classList.remove('visible');
+      }
+    }).catch(() => {});
+  }, 500);
+}
+
+function showResult(jsonStr) {
+  try {
+    const data = JSON.parse(jsonStr);
+    const container = document.getElementById('results');
+    const list = document.getElementById('resultsList');
+    container.classList.add('visible');
+    
+    if (data.error) {
+      list.innerHTML = '<div class="result-card"><div style="color:#ef4444">' + data.error + '</div></div>';
+      return;
+    }
+
+    const results = data.results || [data];
+    const count = data.count || results.length;
+    let html = '';
+
+    const now = new Date();
+    document.getElementById('resultTime').textContent = '扫描完成 ' + now.toLocaleString('zh-CN') + '，共 ' + count + ' 个结果';
+
+    results.forEach((r, i) => {
+      if (!r.ip) return;
+      const latencyColor = r.latencyMs > 0 && r.latencyMs < 100 ? '#22c55e' : r.latencyMs < 300 ? '#eab308' : '#ef4444';
+      html += '<div class="result-card">';
+      if (results.length > 1) {
+        html += '<div style="font-size:13px;color:#94a3b8;margin-bottom:6px">#' + (i+1) + '</div>';
+      }
+      html += '<div class="ip" onclick="copyIP(\'' + r.ip + '\')">' + r.ip + '</div>';
+      html += '<div class="metrics">';
+      html += '<div class="metric"><div class="label">实测带宽</div><div class="value good">' + (r.realBandwidth || 0) + ' Mbps</div></div>';
+      html += '<div class="metric"><div class="label">延迟</div><div class="value" style="color:' + latencyColor + '">' + (r.latencyMs || 0) + ' ms</div></div>';
+      html += '<div class="metric"><div class="label">峰值速度</div><div class="value">' + (r.maxSpeed || 0) + ' kB/s</div></div>';
+      html += '<div class="metric"><div class="label">数据中心</div><div class="value">' + (r.dataCenter || '-') + '</div></div>';
+      html += '</div></div>';
+
+      addHistory(r, now);
+    });
+
+    list.innerHTML = html;
+  } catch(e) {
+    document.getElementById('resultsList').innerHTML = '<div class="result-card"><div style="color:#ef4444">解析失败</div></div>';
+  }
+}
+
+function addHistory(result, time) {
+  const entry = {
+    ip: result.ip,
+    bw: result.realBandwidth || 0,
+    ms: result.latencyMs || 0,
+    dc: result.dataCenter || '',
+    time: time.toLocaleString('zh-CN')
+  };
+  history.unshift(entry);
+  if (history.length > 10) history = history.slice(0, 10);
+  localStorage.setItem('cfip_history', JSON.stringify(history));
+  renderHistory();
+}
+
+function renderHistory() {
+  const list = document.getElementById('historyList');
+  if (history.length === 0) {
+    list.innerHTML = '<div class="empty">暂无历史记录</div>';
+    return;
+  }
+  list.innerHTML = history.map(h => 
+    '<div class="history-item" onclick="copyIP(\'' + h.ip + '\')">' +
+    '<span class="ip">' + h.ip + '</span>' +
+    '<span class="meta">' + h.bw + ' Mbps | ' + h.ms + 'ms' +
+    (h.dc ? ' | ' + h.dc : '') + '<br>' + h.time + '</span>' +
+    '</div>'
+  ).join('');
+}
+
+function copyIP(ip) {
+  navigator.clipboard.writeText(ip).then(() => {
+    showToast('已复制 IP: ' + ip);
+  }).catch(() => {});
+}
+
+function showToast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2000);
+}
+
+loadDCs();
+renderHistory();
+
+fetch('/api/status').then(r => r.json()).then(data => {
+  if (data.running) {
+    running = true;
+    document.getElementById('scanBtn').textContent = '停止扫描';
+    document.getElementById('scanBtn').className = 'btn-scan btn-stop';
+    document.getElementById('progress').classList.add('visible');
+    pollProgress();
+  }
+  if (data.result) {
+    showResult(data.result);
+  }
+}).catch(() => {});
+</script>
+</body>
+</html>
