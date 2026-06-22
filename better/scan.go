@@ -4,7 +4,6 @@ import (
 	"bufio"
 	"context"
 	"crypto/tls"
-	"encoding/json"
 	"fmt"
 	"math/rand"
 	"net"
@@ -19,6 +18,17 @@ import (
 // ----------------------- API 服务端 -----------------------
 
 var apiServerURL = "https://cfip.989920.xyz" // Worker 地址
+
+// 免费 API 源列表
+var freeAPIs = []string{
+	"https://bestcf.pages.dev/lajiao/all.txt",
+	"https://zip.cm.edu.kg/all.txt",
+	"https://raw.githubusercontent.com/qwer-search/bestip/refs/heads/main/addressesapi.txt",
+	"https://raw.githubusercontent.com/xgonce/Cloudflare_IP/refs/heads/main/result.csv",
+	"https://raw.githubusercontent.com/cmliu/WorkerVless2sub/main/addressescsv.csv",
+	"https://raw.githubusercontent.com/xiagefei/CFBestIP/refs/heads/main/Mobile.txt",
+	"https://raw.githubusercontent.com/HandsomeMJZ/cfip/refs/heads/main/best_ips.txt",
+}
 
 // PoolEntry 池中单条记录
 type PoolEntry struct {
@@ -54,64 +64,251 @@ func scanCtx() context.Context {
 
 var downloadClient = &http.Client{Timeout: 30 * time.Second}
 
-// fetchPoolFromServer 从 API 服务端拉取 IP 池
-func fetchPoolFromServer(v4, useTLS bool, dc string) ([]PoolEntry, error) {
-	setProgress("正在从服务器获取 IP 池...")
-
-	type serverResp struct {
-		Total    int         `json:"total"`
-		Matched  int         `json:"matched"`
-		Returned int         `json:"returned"`
-		Nodes    []PoolEntry `json:"nodes"`
+// parseIPLine 解析各种格式的 IP 行
+func parseIPLine(line string) *PoolEntry {
+	line = strings.TrimSpace(line)
+	if line == "" || strings.HasPrefix(line, "#") {
+		return nil
 	}
 
-	body := fmt.Sprintf(`{"v4":%v,"useTls":%v,"dc":%q,"count":200}`, v4, useTLS, dc)
-	req, _ := http.NewRequestWithContext(scanCtx(), "POST", apiServerURL+"/api/pool",
-		strings.NewReader(body))
-	req.Header.Set("Content-Type", "application/json")
-	req.Header.Set("X-API-Key", "cfip-2026")
-
-	resp, err := downloadClient.Do(req)
-	if err != nil {
-		return nil, fmt.Errorf("连接服务器失败: %w", err)
+	// 跳过 CSV 表头
+	lower := strings.ToLower(line)
+	if strings.Contains(lower, "ip") && strings.Contains(lower, "端口") {
+		return nil
 	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("服务器返回 HTTP %d", resp.StatusCode)
+	if strings.Contains(lower, "address") && strings.Contains(lower, "port") {
+		return nil
 	}
 
-	var sr serverResp
-	if err := json.NewDecoder(resp.Body).Decode(&sr); err != nil {
-		return nil, fmt.Errorf("解析响应失败: %w", err)
+	var ip string
+	var port int = 443
+	var dc string = ""
+	var useTLS bool = true
+
+	// 处理 CSV 格式: IP,端口,延迟,数据中心,...
+	if strings.Contains(line, ",") {
+		parts := strings.Split(line, ",")
+		ip = strings.TrimSpace(parts[0])
+
+		// 尝试提取端口
+		if len(parts) > 1 {
+			if p, err := strconv.Atoi(strings.TrimSpace(parts[1])); err == nil && p > 0 && p < 65536 {
+				port = p
+			}
+		}
+
+		// 尝试提取数据中心
+		if len(parts) > 3 {
+			dc = strings.TrimSpace(parts[3])
+		}
+
+		// 检查 IP 是否包含端口
+		if strings.Contains(ip, ":") && !strings.HasPrefix(ip, "[") {
+			ipParts := strings.Split(ip, ":")
+			if len(ipParts) == 2 {
+				if p, err := strconv.Atoi(ipParts[1]); err == nil {
+					port = p
+					ip = ipParts[0]
+				}
+			}
+		}
+	} else if strings.Contains(line, ":") {
+		// IP:端口#备注 格式
+		ipPortPart := line
+		if idx := strings.Index(line, "#"); idx > 0 {
+			ipPortPart = line[:idx]
+			// 从备注提取数据中心
+			remark := line[idx+1:]
+			if idx2 := strings.Index(remark, "|"); idx2 > 0 {
+				locPart := remark[idx2+1:]
+				locPart = strings.TrimSpace(locPart)
+				// 提取三字码头
+				if len(locPart) >= 3 {
+					dc = extractDCFromLocation(locPart)
+				}
+			}
+		}
+
+		if strings.Contains(ipPortPart, ":") {
+			parts := strings.Split(ipPortPart, ":")
+			ip = parts[0]
+			if p, err := strconv.Atoi(parts[1]); err == nil && p > 0 && p < 65536 {
+				port = p
+			}
+		} else {
+			ip = ipPortPart
+		}
+	} else {
+		// 纯 IP
+		ip = line
 	}
 
-	if len(sr.Nodes) == 0 {
-		return nil, fmt.Errorf("服务器返回空池")
+	// 验证 IP 格式
+	if ip == "" || net.ParseIP(ip) == nil {
+		return nil
 	}
 
-	setProgress(fmt.Sprintf("IP 池加载完成: 本次 %d 个节点", len(sr.Nodes)))
-	return sr.Nodes, nil
+	// 根据端口判断 TLS
+	if port == 443 || port == 8443 || port == 2053 || port == 2083 || port == 2087 || port == 2096 {
+		useTLS = true
+	} else {
+		useTLS = false
+	}
+
+	return &PoolEntry{
+		IP:   ip,
+		Port: port,
+		TLS:  useTLS,
+		DC:   dc,
+	}
 }
 
-// fetchDCs 从 API 获取数据中心列表（含国家备注）
-func fetchDCs() ([]DCEntry, error) {
-	req, _ := http.NewRequestWithContext(scanCtx(), "GET", apiServerURL+"/api/dcs", nil)
-	req.Header.Set("X-API-Key", "cfip-2026")
+// extractDCFromLocation 从位置描述中提取数据中心代码
+func extractDCFromLocation(loc string) string {
+	loc = strings.ToUpper(loc)
+
+	// 常见数据中心映射
+	dcMap := map[string]string{
+		"香港": "HKG", "HK": "HKG", "HONG KONG": "HKG",
+		"新加坡": "SIN", "SG": "SIN", "SINGAPORE": "SIN",
+		"日本": "NRT", "JP": "NRT", "JAPAN": "NRT", "TOKYO": "NRT",
+		"韩国": "ICN", "KR": "ICN", "KOREA": "ICN", "SEOUL": "ICN",
+		"台湾": "TPE", "TW": "TPE", "TAIWAN": "TPE", "TAIPEI": "TPE",
+		"美国": "LAX", "US": "LAX", "USA": "LAX", "LOS ANGELES": "LAX",
+		"德国": "FRA", "DE": "FRA", "GERMANY": "FRA", "FRANKFURT": "FRA",
+		"英国": "LHR", "UK": "LHR", "BRITAIN": "LHR", "LONDON": "LHR",
+		"荷兰": "AMS", "NL": "AMS", "NETHERLANDS": "AMS", "AMSTERDAM": "AMS",
+		"法国": "CDG", "FR": "CDG", "FRANCE": "CDG", "PARIS": "CDG",
+		"澳大利亚": "SYD", "AU": "SYD", "AUSTRALIA": "SYD", "SYDNEY": "SYD",
+		"加拿大": "YYZ", "CA": "YYZ", "CANADA": "YYZ", "TORONTO": "YYZ",
+		"印度": "BOM", "IN": "BOM", "INDIA": "BOM", "MUMBAI": "BOM",
+		"巴西": "GRU", "BR": "GRU", "BRAZIL": "GRU", "SAO PAULO": "GRU",
+	}
+
+	for key, dc := range dcMap {
+		if strings.Contains(loc, key) {
+			return dc
+		}
+	}
+
+	return ""
+}
+
+// fetchFromFreeAPI 从单个免费 API 获取 IP
+func fetchFromFreeAPI(apiURL string) ([]PoolEntry, error) {
+	req, _ := http.NewRequestWithContext(scanCtx(), "GET", apiURL, nil)
+	req.Header.Set("User-Agent", "Mozilla/5.0")
 
 	resp, err := downloadClient.Do(req)
 	if err != nil {
-		return nil, fmt.Errorf("获取 DC 列表失败: %w", err)
+		return nil, err
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
-		return nil, fmt.Errorf("服务器返回 HTTP %d", resp.StatusCode)
+		return nil, fmt.Errorf("HTTP %d", resp.StatusCode)
 	}
 
-	var dcs []DCEntry
-	if err := json.NewDecoder(resp.Body).Decode(&dcs); err != nil {
-		return nil, fmt.Errorf("解析 DC 列表失败: %w", err)
+	var entries []PoolEntry
+	scanner := bufio.NewScanner(resp.Body)
+	for scanner.Scan() {
+		if isCancelled() {
+			break
+		}
+		line := scanner.Text()
+		if entry := parseIPLine(line); entry != nil {
+			entries = append(entries, *entry)
+		}
+	}
+
+	return entries, scanner.Err()
+}
+
+// fetchPoolFromServer 从免费 API 获取 IP 池（多源聚合）
+func fetchPoolFromServer(v4, useTLS bool, dc string) ([]PoolEntry, error) {
+	setProgress("正在从免费 API 获取 IP 池...")
+
+	var allEntries []PoolEntry
+	var mu sync.Mutex
+	var wg sync.WaitGroup
+
+	// 并发从多个 API 获取
+	for _, apiURL := range freeAPIs {
+		if isCancelled() {
+			break
+		}
+		wg.Add(1)
+		go func(url string) {
+			defer wg.Done()
+
+			entries, err := fetchFromFreeAPI(url)
+			if err != nil {
+				return
+			}
+
+			mu.Lock()
+			allEntries = append(allEntries, entries...)
+			mu.Unlock()
+		}(apiURL)
+	}
+
+	wg.Wait()
+
+	if len(allEntries) == 0 {
+		return nil, fmt.Errorf("所有免费 API 均无法获取数据")
+	}
+
+	setProgress(fmt.Sprintf("IP 池加载完成: 聚合 %d 个节点", len(allEntries)))
+
+	// 去重
+	seen := make(map[string]bool)
+	var unique []PoolEntry
+	for _, e := range allEntries {
+		key := fmt.Sprintf("%s:%d", e.IP, e.Port)
+		if !seen[key] {
+			seen[key] = true
+			unique = append(unique, e)
+		}
+	}
+
+	setProgress(fmt.Sprintf("去重后: %d 个节点", len(unique)))
+	return unique, nil
+}
+
+// fetchDCs 从 API 获取数据中心列表（使用内置列表）
+func fetchDCs() ([]DCEntry, error) {
+	// 使用内置的常用数据中心列表
+	dcs := []DCEntry{
+		{"HKG", "HKG · 香港"},
+		{"SIN", "SIN · 新加坡"},
+		{"NRT", "NRT · 日本"},
+		{"ICN", "ICN · 韩国"},
+		{"TPE", "TPE · 台湾"},
+		{"LAX", "LAX · 美国"},
+		{"FRA", "FRA · 德国"},
+		{"LHR", "LHR · 英国"},
+		{"AMS", "AMS · 荷兰"},
+		{"CDG", "CDG · 法国"},
+		{"SYD", "SYD · 澳大利亚"},
+		{"YYZ", "YYZ · 加拿大"},
+		{"BOM", "BOM · 印度"},
+		{"GRU", "GRU · 巴西"},
+		{"AKL", "AKL · 新西兰"},
+		{"BKK", "BKK · 泰国"},
+		{"CGK", "CGK · 印尼"},
+		{"DEL", "DEL · 印度"},
+		{"DXB", "DXB · 阿联酋"},
+		{"EVN", "EVN · 亚美尼亚"},
+		{"IST", "IST · 土耳其"},
+		{"JNB", "JNB · 南非"},
+		{"KUL", "KUL · 马来西亚"},
+		{"MNL", "MNL · 菲律宾"},
+		{"SEA", "SEA · 美国西雅图"},
+		{"SJC", "SJC · 美国圣何塞"},
+		{"TLV", "TLV · 以色列"},
+		{"VIE", "VIE · 奥地利"},
+		{"WAW", "WAW · 波兰"},
+		{"ZRH", "ZRH · 瑞士"},
 	}
 	return dcs, nil
 }
@@ -160,7 +357,7 @@ type RTTResult struct {
 // testRTT 测试单个 IP:port 的 RTT
 func testRTT(entry PoolEntry) int {
 	var totalMs int
-	for range 3 {
+	for i := 0; i < 3; i++ {
 		start := time.Now()
 		d := net.Dialer{Timeout: 1 * time.Second}
 		conn, err := d.DialContext(scanCtx(), "tcp", net.JoinHostPort(entry.IP, strconv.Itoa(entry.Port)))
@@ -382,7 +579,7 @@ func verifyTLS(ip string, port int) bool {
 
 // ----------------------- 核心测试逻辑 -----------------------
 
-// cloudflareTest 使用 cfnb IP 池做优选，返回 topN 个结果
+// cloudflareTest 使用免费 IP 池做优选，返回 topN 个结果
 func cloudflareTest(ipType int, useTLS bool, taskNum int, speed int, topN int) []ScanResult {
 	entries, err := fetchPoolFromServer(ipType == 4, useTLS, dcFilter)
 	if err != nil {
@@ -393,6 +590,7 @@ func cloudflareTest(ipType int, useTLS bool, taskNum int, speed int, topN int) [
 		return []ScanResult{{Error: "扫描已取消"}}
 	}
 
+	// 按 IP 版本和 TLS 过滤
 	var filtered []PoolEntry
 	for _, e := range entries {
 		isV4 := strings.Count(e.IP, ":") == 0
@@ -411,6 +609,7 @@ func cloudflareTest(ipType int, useTLS bool, taskNum int, speed int, topN int) [
 
 	setProgress(fmt.Sprintf("从 %d 个节点中筛选出 %d 个", len(entries), len(filtered)))
 
+	// 按数据中心过滤
 	if dcFilter != "" {
 		var dcFiltered []PoolEntry
 		for _, e := range filtered {
@@ -434,6 +633,7 @@ func cloudflareTest(ipType int, useTLS bool, taskNum int, speed int, topN int) [
 		return []ScanResult{{Error: "扫描已取消"}}
 	}
 
+	// RTT 测试
 	sampled := randomSample(filtered, sampleSize)
 	setProgress(fmt.Sprintf("开始 RTT 测试 %d 个 IP...", len(sampled)))
 	rttResults := runRTTTest(sampled, taskNum)
@@ -444,6 +644,7 @@ func cloudflareTest(ipType int, useTLS bool, taskNum int, speed int, topN int) [
 		return []ScanResult{{Error: "所有 IP RTT 丢包，无可用节点"}}
 	}
 
+	// TLS 握手验证
 	if useTLS {
 		var tlsOK []RTTResult
 		for _, r := range rttResults {
@@ -462,6 +663,7 @@ func cloudflareTest(ipType int, useTLS bool, taskNum int, speed int, topN int) [
 		rttResults = tlsOK
 	}
 
+	// 速度测试
 	type testResult struct {
 		ipport   string
 		maxSpeed int
@@ -502,6 +704,7 @@ func cloudflareTest(ipType int, useTLS bool, taskNum int, speed int, topN int) [
 		return []ScanResult{{Error: "暂无可用节点，请再次扫描"}}
 	}
 
+	// 按速度降序排列
 	sort.Slice(results, func(i, j int) bool {
 		return results[i].maxSpeed > results[j].maxSpeed
 	})

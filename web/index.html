@@ -6,100 +6,151 @@
 <title>CF IP 优选</title>
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
-body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0f172a;color:#e2e8f0;min-height:100vh;display:flex;justify-content:center;align-items:flex-start;padding:20px}
-.container{max-width:480px;width:100%;margin:0 auto}
-.card{background:#1e293b;border-radius:12px;padding:20px;margin-bottom:12px}
-.header{display:flex;justify-content:space-between;align-items:center;margin-bottom:0}
-.title{font-size:22px;font-weight:700}
-.row{display:flex;gap:8px;margin-top:14px}
-.row label{flex:1;font-size:13px;color:#94a3b8;display:block;margin-bottom:6px}
-.segmented{display:flex;background:#0f172a;border-radius:8px;padding:3px;height:44px}
-.segmented button{flex:1;border:none;background:transparent;color:#94a3b8;font-size:14px;font-weight:600;border-radius:6px;cursor:pointer;transition:all .2s}
-.segmented button.active{background:#3b82f6;color:#fff}
-.input-group{display:flex;align-items:center;background:#0f172a;border-radius:8px;height:44px;padding:0 12px;margin-top:6px}
-.input-group input{flex:1;background:transparent;border:none;color:#e2e8f0;font-size:16px;font-weight:600;text-align:center;outline:none}
-.input-group span{font-size:13px;color:#94a3b8}
-.switch-row{display:flex;justify-content:space-between;align-items:center;background:#0f172a;border-radius:8px;height:44px;padding:0 12px;margin-top:6px}
-.switch-row span{font-size:14px;font-weight:600}
-.switch{position:relative;width:44px;height:24px}
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;background:#0a0e1a;color:#e2e8f0;min-height:100vh;display:flex;justify-content:center;padding:20px}
+.container{max-width:720px;width:100%;margin:0 auto}
+
+/* 头部 */
+.header-card{background:linear-gradient(135deg,#1e3a5f 0%,#0f172a 100%);border-radius:16px;padding:24px 20px;margin-bottom:16px;text-align:center;box-shadow:0 4px 20px rgba(0,0,0,0.3)}
+.header-card .title{font-size:28px;font-weight:700;background:linear-gradient(90deg,#60a5fa,#a78bfa);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.header-card .subtitle{font-size:13px;color:#94a3b8;margin-top:6px}
+
+/* 卡片 */
+.card{background:#1e293b;border-radius:14px;padding:24px;margin-bottom:14px;box-shadow:0 2px 12px rgba(0,0,0,0.2)}
+
+/* 四列布局 */
+.row{display:flex;gap:16px;margin-top:0}
+.row + .row{margin-top:18px}
+.row label{font-size:13px;color:#94a3b8;display:block;margin-bottom:10px;font-weight:500}
+.col{flex:1;min-width:0}
+.col-2{flex:2;min-width:0}
+
+/* 分段按钮 */
+.segmented{display:flex;background:#0f172a;border-radius:10px;padding:4px;height:44px}
+.segmented button{flex:1;border:none;background:transparent;color:#94a3b8;font-size:14px;font-weight:600;border-radius:8px;cursor:pointer;transition:all .2s;white-space:nowrap}
+.segmented button.active{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;box-shadow:0 2px 8px rgba(59,130,246,0.3)}
+.segmented button:hover:not(.active){color:#e2e8f0}
+
+/* 输入组 */
+.input-group{display:flex;align-items:center;background:#0f172a;border-radius:10px;height:44px;padding:0 14px;border:1px solid #334155;transition:border-color .2s}
+.input-group:focus-within{border-color:#3b82f6}
+.input-group input{flex:1;background:transparent;border:none;color:#e2e8f0;font-size:15px;font-weight:600;text-align:center;outline:none;width:100%}
+.input-group span{font-size:13px;color:#64748b;margin-left:6px;white-space:nowrap}
+
+/* 开关行 - 缩小 */
+.switch-row{display:flex;justify-content:space-between;align-items:center;background:#0f172a;border-radius:10px;height:44px;padding:0 14px;border:1px solid #334155}
+.switch-row span{font-size:14px;font-weight:600;color:#e2e8f0}
+.switch{position:relative;width:40px;height:22px}
 .switch input{opacity:0;width:0;height:0}
-.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#475569;border-radius:24px;transition:.3s}
-.slider:before{position:absolute;content:"";height:18px;width:18px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s}
-.switch input:checked+.slider{background:#3b82f6}
-.switch input:checked+.slider:before{transform:translateX(20px)}
-.dc-row{margin-top:14px}
-.dc-row label{font-size:13px;color:#94a3b8;display:block;margin-bottom:6px}
-.dc-row select{width:100%;background:#0f172a;border:1px solid #334155;border-radius:8px;color:#e2e8f0;font-size:14px;padding:10px 12px;outline:none;cursor:pointer}
-.dc-row select:focus{border-color:#3b82f6}
-.dc-header{display:flex;justify-content:space-between;align-items:flex-end;margin-bottom:6px}
-.dc-header button{background:#334155;border:none;color:#94a3b8;border-radius:6px;padding:4px 10px;font-size:12px;cursor:pointer}
-.dc-header button:hover{background:#475569;color:#e2e8f0}
-.btn-scan{width:100%;height:48px;border:none;border-radius:10px;font-size:16px;font-weight:600;cursor:pointer;transition:all .2s}
-.btn-start{background:#3b82f6;color:#fff}
-.btn-start:hover{background:#2563eb}
-.btn-stop{background:#ef4444;color:#fff}
-.btn-stop:hover{background:#dc2626}
-.progress{display:none;margin-top:14px;background:#0f172a;border-radius:8px;padding:12px}
+.slider{position:absolute;cursor:pointer;top:0;left:0;right:0;bottom:0;background:#475569;border-radius:22px;transition:.3s}
+.slider:before{position:absolute;content:"";height:16px;width:16px;left:3px;bottom:3px;background:#fff;border-radius:50%;transition:.3s;box-shadow:0 1px 3px rgba(0,0,0,0.2)}
+.switch input:checked+.slider{background:linear-gradient(135deg,#3b82f6,#2563eb)}
+.switch input:checked+.slider:before{transform:translateX(18px)}
+
+/* 数据中心 */
+.dc-row{margin-top:0}
+.dc-row label{font-size:13px;color:#94a3b8;display:block;margin-bottom:10px;font-weight:500}
+.dc-row select{width:100%;min-width:200px;background:#0f172a;border:1px solid #334155;border-radius:10px;color:#e2e8f0;font-size:14px;font-weight:600;padding:11px 14px;outline:none;cursor:pointer;transition:all .2s;height:44px}
+.dc-row select:focus{border-color:#3b82f6;box-shadow:0 0 0 2px rgba(59,130,246,0.2)}
+.dc-row select:hover{border-color:#475569}
+.dc-row select option{background:#1e293b;color:#e2e8f0;font-size:14px;font-weight:500}
+/* 数据中心 - 已内联样式 */
+
+/* 刷新反馈 */
+.refresh-feedback{color:#22c55e;font-size:12px;margin-top:6px;opacity:0;transition:opacity .3s}
+.refresh-feedback.show{opacity:1}
+
+/* 扫描按钮 */
+.btn-scan{width:100%;height:50px;border:none;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;transition:all .2s;box-shadow:0 4px 15px rgba(0,0,0,0.2)}
+.btn-start{background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff}
+.btn-start:hover{background:linear-gradient(135deg,#2563eb,#1d4ed8);transform:translateY(-1px);box-shadow:0 6px 20px rgba(59,130,246,0.4)}
+.btn-stop{background:linear-gradient(135deg,#ef4444,#dc2626);color:#fff}
+.btn-stop:hover{background:linear-gradient(135deg,#dc2626,#b91c1c);transform:translateY(-1px)}
+
+/* 进度 */
+.progress{display:none;margin-top:16px;background:#0f172a;border-radius:10px;padding:16px}
 .progress.visible{display:block}
-.progress-text{font-size:13px;color:#94a3b8;margin-top:8px}
+.progress-text{font-size:13px;color:#94a3b8;margin-top:10px;text-align:center}
 .spinner{width:100%;height:4px;background:#334155;border-radius:2px;overflow:hidden}
-.spinner:after{content:"";display:block;width:40%;height:100%;background:#3b82f6;border-radius:2px;animation:spin 1s ease-in-out infinite}
+.spinner:after{content:"";display:block;width:40%;height:100%;background:linear-gradient(90deg,#3b82f6,#a78bfa);border-radius:2px;animation:spin 1s ease-in-out infinite}
 @keyframes spin{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+
+/* 结果 - 横向布局 */
 .results{display:none;margin-top:0}
 .results.visible{display:block}
-.result-card{background:#0f172a;border-radius:8px;padding:12px;margin-top:8px}
-.result-card .ip{font-family:monospace;font-size:15px;font-weight:700;color:#60a5fa;cursor:pointer;padding:8px 10px;background:#1e293b;border-radius:6px;word-break:break-all}
-.result-card .metrics{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:8px}
-.result-card .metric{background:#1e293b;border-radius:6px;padding:8px}
-.result-card .metric .label{font-size:11px;color:#64748b}
-.result-card .metric .value{font-size:14px;font-weight:600;color:#e2e8f0;margin-top:2px}
+.result-card{background:#0f172a;border-radius:12px;padding:16px;margin-top:12px;border:1px solid #334155;transition:all .2s}
+.result-card:hover{border-color:#3b82f6;transform:translateX(4px)}
+.result-card .ip{font-family:monospace;font-size:16px;font-weight:700;color:#60a5fa;cursor:pointer;padding:12px 14px;background:#1e293b;border-radius:10px;word-break:break-all;transition:all .2s}
+.result-card .ip:hover{background:#334155;color:#93c5fd}
+.result-card .metrics{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin-top:12px}
+.result-card .metric{background:#1e293b;border-radius:8px;padding:12px;text-align:center}
+.result-card .metric .label{font-size:11px;color:#64748b;text-transform:uppercase;letter-spacing:0.5px;margin-bottom:6px}
+.result-card .metric .value{font-size:15px;font-weight:700;color:#e2e8f0}
 .result-card .metric .value.good{color:#22c55e}
-.empty{text-align:center;color:#64748b;padding:30px;font-size:14px}
+.result-card .metric .value.warn{color:#eab308}
+.result-card .metric .value.bad{color:#ef4444}
+
+/* 空状态 */
+.empty{text-align:center;color:#64748b;padding:40px 20px;font-size:14px}
+.empty-icon{font-size:48px;margin-bottom:12px;opacity:0.5}
+
+/* 历史 */
 .history{margin-top:0}
-.history-title{font-size:16px;font-weight:600;margin-bottom:2px}
-.history-hint{font-size:12px;color:#64748b;margin-bottom:12px}
-.history-list{max-height:300px;overflow-y:auto}
-.history-item{display:flex;justify-content:space-between;align-items:center;padding:8px 10px;background:#0f172a;border-radius:6px;margin-bottom:6px;cursor:pointer}
-.history-item:hover{background:#1e293b}
-.history-item .ip{font-family:monospace;font-size:13px;color:#60a5fa}
-.history-item .meta{font-size:11px;color:#64748b;text-align:right}
-.toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:#334155;color:#e2e8f0;padding:10px 20px;border-radius:8px;font-size:13px;z-index:100;opacity:0;transition:opacity .3s}
-.toast.show{opacity:1}
+.history-title{font-size:18px;font-weight:700;margin-bottom:4px;color:#e2e8f0}
+.history-hint{font-size:12px;color:#64748b;margin-bottom:14px}
+.history-list{max-height:400px;overflow-y:auto}
+.history-item{display:flex;justify-content:space-between;align-items:center;padding:12px 14px;background:#0f172a;border-radius:10px;margin-bottom:8px;cursor:pointer;transition:all .2s;border:1px solid transparent}
+.history-item:hover{background:#1e293b;border-color:#334155}
+.history-item .ip{font-family:monospace;font-size:14px;color:#60a5fa;font-weight:600}
+.history-item .meta{font-size:12px;color:#64748b;text-align:right;line-height:1.6}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(100px);background:#334155;color:#e2e8f0;padding:12px 24px;border-radius:10px;font-size:14px;z-index:100;opacity:0;transition:all .3s;box-shadow:0 4px 15px rgba(0,0,0,0.3)}
+.toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+
+/* 滚动条 */
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:#0f172a}
+::-webkit-scrollbar-thumb{background:#334155;border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:#475569}
+
+/* 动画 */
+@keyframes fadeIn{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:translateY(0)}}
+.fade-in{animation:fadeIn .3s ease}
 </style>
 </head>
 <body>
 <div class="container">
-  <div class="card header">
+  <!-- 头部 -->
+  <div class="header-card">
     <div class="title">CF IP 优选</div>
+    <div class="subtitle">Cloudflare IP 优选测速工具</div>
   </div>
 
+  <!-- 设置卡片 -->
   <div class="card">
     <div class="row">
-      <div>
+      <div class="col">
         <label>IP 协议</label>
         <div class="segmented" id="ipVersion">
           <button class="active" data-value="v4">IPv4</button>
           <button data-value="v6">IPv6</button>
         </div>
       </div>
-      <div>
+      <div class="col">
         <label>结果数量</label>
         <div class="segmented" id="resultCount">
           <button class="active" data-value="1">1 个</button>
           <button data-value="5">5 个</button>
         </div>
       </div>
-    </div>
-
-    <div class="row">
-      <div style="flex:1">
+      <div class="col">
         <label>期望带宽</label>
         <div class="input-group">
           <input type="number" id="bandwidth" value="50" min="1" max="1000">
           <span>Mbps</span>
         </div>
       </div>
-      <div style="flex:1">
+      <div class="col">
         <label>连接验证</label>
         <div class="switch-row">
           <span>TLS</span>
@@ -111,35 +162,44 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
       </div>
     </div>
 
-    <div class="dc-row">
-      <div class="dc-header">
+    <div class="row" style="margin-top:18px;align-items:flex-end">
+      <div class="col" style="flex:2">
         <label>数据中心</label>
-        <button onclick="loadDCs()">刷新</button>
+        <select id="dcSelect" style="width:100%;background:#0f172a;border:1px solid #334155;border-radius:12px;color:#e2e8f0;font-size:14px;font-weight:600;padding:12px 16px;outline:none;cursor:pointer;transition:all .2s;height:44px;appearance:none;-webkit-appearance:none">
+          <option value="">🌍 全部</option>
+        </select>
       </div>
-      <select id="dcSelect">
-        <option value="">全部</option>
-      </select>
+      <div class="col" style="flex:1;display:flex;justify-content:flex-end">
+        <button onclick="loadDCs()" style="height:44px;border:none;background:linear-gradient(135deg,#3b82f6,#2563eb);color:#fff;font-size:14px;font-weight:600;border-radius:10px;cursor:pointer;transition:all .2s;box-shadow:0 2px 8px rgba(59,130,246,0.3);padding:0 24px">🔄 刷新</button>
+      </div>
     </div>
+    <div class="refresh-feedback" id="refreshFeedback" style="color:#22c55e;font-size:12px;margin-top:8px;opacity:0;transition:opacity .3s">✅ 已更新</div>
   </div>
 
-  <div class="card" style="padding-bottom:12px">
-    <button class="btn-scan btn-start" id="scanBtn" onclick="toggleScan()">开始扫描</button>
+  <!-- 扫描按钮 -->
+  <div class="card" style="padding-bottom:16px">
+    <button class="btn-scan btn-start" id="scanBtn" onclick="toggleScan()">🚀 开始扫描</button>
     <div class="progress" id="progress">
       <div class="spinner"></div>
       <div class="progress-text" id="progressText">正在初始化...</div>
     </div>
   </div>
 
+  <!-- 结果 -->
   <div class="card results" id="results">
     <div id="resultsList"></div>
-    <div style="margin-top:12px;font-size:12px;color:#64748b" id="resultTime"></div>
+    <div style="margin-top:14px;font-size:12px;color:#64748b;text-align:center" id="resultTime"></div>
   </div>
 
+  <!-- 历史 -->
   <div class="card history">
-    <div class="history-title">历史记录</div>
+    <div class="history-title">📋 历史记录</div>
     <div class="history-hint">点击 IP 可复制，保存最近 10 条</div>
     <div class="history-list" id="historyList">
-      <div class="empty">暂无历史记录</div>
+      <div class="empty">
+        <div class="empty-icon">📭</div>
+        <div>暂无历史记录</div>
+      </div>
     </div>
   </div>
 </div>
@@ -150,6 +210,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;b
 let running = false;
 let pollTimer = null;
 let history = JSON.parse(localStorage.getItem('cfip_history') || '[]');
+let isNewScan = false;
 
 // ── Segmented buttons ──
 document.querySelectorAll('.segmented').forEach(group => {
@@ -161,23 +222,31 @@ document.querySelectorAll('.segmented').forEach(group => {
   });
 });
 
-// ── Show password lock initially ──
-// Skipping password lock for now - can add later
-
 // ── Load DCs ──
 function loadDCs() {
+  const feedback = document.getElementById('refreshFeedback');
+  if (!feedback) return;
+  feedback.textContent = '⏳ 正在更新...';
+  feedback.style.opacity = '1';
+
   fetch('/api/dcs').then(r => r.json()).then(dcs => {
     const sel = document.getElementById('dcSelect');
     const cur = sel.value;
-    sel.innerHTML = '<option value="">全部</option>';
+    sel.innerHTML = '<option value="">🌍 全部</option>';
     dcs.forEach(d => {
       const opt = document.createElement('option');
       opt.value = d.dc;
-      opt.textContent = d.dc + (d.label ? ' - ' + d.label : '');
+      opt.textContent = d.label || d.dc;
       sel.appendChild(opt);
     });
     if (cur) sel.value = cur;
-  }).catch(() => {});
+
+    feedback.textContent = '✅ 已更新，获取 ' + dcs.length + ' 个数据中心';
+    setTimeout(() => { feedback.style.opacity = '0'; }, 3000);
+  }).catch(() => {
+    feedback.textContent = '❌ 更新失败';
+    setTimeout(() => { feedback.style.opacity = '0'; }, 3000);
+  });
 }
 
 // ── Toggle scan ──
@@ -190,12 +259,13 @@ function toggleScan() {
 }
 
 function startScan() {
+  isNewScan = true;
   running = true;
   const btn = document.getElementById('scanBtn');
-  btn.textContent = '停止扫描';
+  btn.textContent = '⏹ 停止扫描';
   btn.className = 'btn-scan btn-stop';
   document.getElementById('progress').classList.add('visible');
-  document.getElementById('progressText').textContent = '正在启动...';
+  document.getElementById('progressText').textContent = '正在初始化...';
 
   const v4 = document.querySelector('#ipVersion .active').dataset.value === 'v4';
   const tls = document.getElementById('tls').checked;
@@ -206,7 +276,7 @@ function startScan() {
   fetch('/api/scan', {
     method: 'POST',
     headers: {'Content-Type': 'application/json'},
-    body: JSON.stringify({v4, tls, bw, dc, count})
+    body: JSON.stringify({v4: v4, tls: tls, bw: bw, dc: dc, count: count})
   }).then(r => r.json()).then(data => {
     if (data.error) {
       showToast(data.error);
@@ -233,7 +303,7 @@ function cancelScan() {
 function stopScanUI() {
   running = false;
   const btn = document.getElementById('scanBtn');
-  btn.textContent = '开始扫描';
+  btn.textContent = '🚀 开始扫描';
   btn.className = 'btn-scan btn-start';
   if (pollTimer) { clearInterval(pollTimer); pollTimer = null; }
 }
@@ -271,9 +341,9 @@ function showResult(jsonStr) {
     const container = document.getElementById('results');
     const list = document.getElementById('resultsList');
     container.classList.add('visible');
-    
+
     if (data.error) {
-      list.innerHTML = '<div class="result-card"><div style="color:#ef4444">' + data.error + '</div></div>';
+      list.innerHTML = '<div class="result-card"><div style="color:#ef4444;padding:10px">' + data.error + '</div></div>';
       return;
     }
 
@@ -282,30 +352,30 @@ function showResult(jsonStr) {
     let html = '';
 
     const now = new Date();
-    document.getElementById('resultTime').textContent = '扫描完成 ' + now.toLocaleString('zh-CN') + '，共 ' + count + ' 个结果';
+    document.getElementById('resultTime').textContent = '✅ 扫描完成 ' + now.toLocaleString('zh-CN') + '，共 ' + count + ' 个结果';
 
     results.forEach((r, i) => {
       if (!r.ip) return;
-      const latencyColor = r.latencyMs > 0 && r.latencyMs < 100 ? '#22c55e' : r.latencyMs < 300 ? '#eab308' : '#ef4444';
-      html += '<div class="result-card">';
+      const latencyColor = r.latencyMs > 0 && r.latencyMs < 100 ? 'good' : r.latencyMs < 300 ? 'warn' : 'bad';
+      html += '<div class="result-card fade-in">';
       if (results.length > 1) {
-        html += '<div style="font-size:13px;color:#94a3b8;margin-bottom:6px">#' + (i+1) + '</div>';
+        html += '<div style="font-size:13px;color:#94a3b8;margin-bottom:8px">#' + (i+1) + '</div>';
       }
-      html += '<div class="ip" onclick="copyIP(\'' + r.ip + '\')">' + r.ip + '</div>';
+      html += '<div class="ip" onclick="copyIP(' + "'" + r.ip + "'" + ')">' + r.ip + '</div>';
       html += '<div class="metrics">';
       html += '<div class="metric"><div class="label">实测带宽</div><div class="value good">' + (r.realBandwidth || 0) + ' Mbps</div></div>';
-      html += '<div class="metric"><div class="label">延迟</div><div class="value" style="color:' + latencyColor + '">' + (r.latencyMs || 0) + ' ms</div></div>';
+      html += '<div class="metric"><div class="label">延迟</div><div class="value ' + latencyColor + '">' + (r.latencyMs || 0) + ' ms</div></div>';
       html += '<div class="metric"><div class="label">峰值速度</div><div class="value">' + (r.maxSpeed || 0) + ' kB/s</div></div>';
       html += '<div class="metric"><div class="label">数据中心</div><div class="value">' + (r.dataCenter || '-') + '</div></div>';
       html += '</div></div>';
 
-      // Save to history
-      addHistory(r, now);
+      if (isNewScan) addHistory(r, now);
     });
 
     list.innerHTML = html;
+    isNewScan = false;
   } catch(e) {
-    document.getElementById('resultsList').innerHTML = '<div class="result-card"><div style="color:#ef4444">解析失败</div></div>';
+    document.getElementById('resultsList').innerHTML = '<div class="result-card"><div style="color:#ef4444;padding:10px">解析失败</div></div>';
   }
 }
 
@@ -327,11 +397,11 @@ function addHistory(result, time) {
 function renderHistory() {
   const list = document.getElementById('historyList');
   if (history.length === 0) {
-    list.innerHTML = '<div class="empty">暂无历史记录</div>';
+    list.innerHTML = '<div class="empty"><div class="empty-icon">📭</div><div>暂无历史记录</div></div>';
     return;
   }
   list.innerHTML = history.map(h => 
-    '<div class="history-item" onclick="copyIP(\'' + h.ip + '\')">' +
+    '<div class="history-item" onclick="copyIP(' + "'" + h.ip + "'" + ')">' +
     '<span class="ip">' + h.ip + '</span>' +
     '<span class="meta">' + h.bw + ' Mbps | ' + h.ms + 'ms' +
     (h.dc ? ' | ' + h.dc : '') + '<br>' + h.time + '</span>' +
@@ -342,7 +412,7 @@ function renderHistory() {
 // ── Utils ──
 function copyIP(ip) {
   navigator.clipboard.writeText(ip).then(() => {
-    showToast('已复制 IP: ' + ip);
+    showToast('📋 已复制 IP: ' + ip);
   }).catch(() => {});
 }
 
@@ -356,16 +426,16 @@ function showToast(msg) {
 // ── Init ──
 loadDCs();
 renderHistory();
-// Check status on load
 fetch('/api/status').then(r => r.json()).then(data => {
   if (data.running) {
     running = true;
-    document.getElementById('scanBtn').textContent = '停止扫描';
+    document.getElementById('scanBtn').textContent = '⏹ 停止扫描';
     document.getElementById('scanBtn').className = 'btn-scan btn-stop';
     document.getElementById('progress').classList.add('visible');
     pollProgress();
   }
   if (data.result) {
+    isNewScan = false;
     showResult(data.result);
   }
 }).catch(() => {});

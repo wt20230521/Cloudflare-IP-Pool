@@ -4,6 +4,7 @@ import (
 	"cfip/better"
 	"embed"
 	"encoding/json"
+	"io/fs"
 	"log"
 	"net"
 	"net/http"
@@ -17,6 +18,15 @@ import (
 
 //go:embed web/*
 var webFS embed.FS
+
+// getWebFS 获取 web 子目录的文件系统
+func getWebFS() http.FileSystem {
+	webSubdir, err := fs.Sub(webFS, "web")
+	if err != nil {
+		log.Fatal(err)
+	}
+	return http.FS(webSubdir)
+}
 
 // ── Scan Manager ──
 
@@ -153,9 +163,29 @@ func main() {
 
 	better.SetApiServer("https://cfip.989920.xyz")
 
-	// Static file server for embedded web UI
+	// 获取 web 子目录的文件系统
+	webFiles := getWebFS()
+
+	// 创建路由
 	mux := http.NewServeMux()
-	mux.Handle("/", http.FileServer(http.FS(webFS)))
+
+	// 根路径直接提供 index.html
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path == "/" {
+			// 读取并返回 index.html
+			data, err := webFS.ReadFile("web/index.html")
+			if err != nil {
+				http.Error(w, err.Error(), http.StatusInternalServerError)
+				return
+			}
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Write(data)
+			return
+		}
+		// 其他路径使用文件服务器
+		http.FileServer(webFiles).ServeHTTP(w, r)
+	})
+
 	mux.HandleFunc("/api/dcs", handleDCs)
 	mux.HandleFunc("/api/scan", handleScan)
 	mux.HandleFunc("/api/progress", handleProgress)
@@ -182,7 +212,7 @@ func main() {
 	signal.Notify(sigCh, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
 		<-sigCh
-		log.Println("\n  正在停止...")
+		log.Println("正在停止...")
 		better.CancelScan()
 		os.Exit(0)
 	}()
